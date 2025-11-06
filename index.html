@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SimpleMom Book Rental — Vercel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { playful: ['"Baloo 2"', 'system-ui', 'sans-serif'] },
+        backgroundImage: {'play': 'linear-gradient(135deg,#fff1f2,#fdf2f8 20%,#eff6ff 40%,#ecfeff 60%,#fef9c3 80%,#f5f3ff)'},
+        boxShadow: { soft: '0 12px 28px rgba(31,41,55,.12)' }
+      }
+    }
+  }
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<style>[x-cloak]{display:none}</style>
+</head>
+<body class="min-h-screen bg-play font-playful text-slate-800">
+<div x-data="app()" x-init="init()" class="min-h-screen">
+
+  <header class="sticky top-0 z-40 border-b bg-white/70 backdrop-blur">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="text-xl font-extrabold">SimpleMom Book Rental</div>
+      <div class="flex items-center gap-2">
+        <button class="px-3 py-2 rounded-xl border bg-white hover:bg-slate-50" @click="showRecommend=true">Recommend a Book</button>
+        <button class="px-3 py-2 rounded-xl border bg-white hover:bg-slate-50" @click="openWishlist=true">Wishlist (<span x-text="wishlist.length"></span>)</button>
+        <button class="px-3 py-2 rounded-xl border bg-white hover:bg-slate-50" @click="openCart=true">Cart (<span x-text="cartCount()"></span>)</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Registration -->
+  <div x-show="!profileReady" x-cloak class="fixed inset-0 z-50">
+    <div class="absolute inset-0 bg-black/30"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+      <div class="w-full max-w-xl bg-white/80 backdrop-blur border rounded-3xl shadow-soft p-6">
+        <h2 class="text-2xl font-bold">Welcome! 🐣</h2>
+        <p class="text-xs text-slate-700 mt-1">two moms. too many books. total chaos but cute.</p>
+        <div class="grid grid-cols-2 gap-3 mt-4 text-sm">
+          <div class="col-span-2"><label>Child’s Name</label><input x-model="profile.child" class="mt-1 w-full px-3 py-2 rounded-xl border" placeholder="Tapasvi" /></div>
+          <div><label>Parent’s Name</label><input x-model="profile.parent" class="mt-1 w-full px-3 py-2 rounded-xl border" placeholder="Parent" /></div>
+          <div><label>WhatsApp</label><input x-model="profile.whatsapp" class="mt-1 w-full px-3 py-2 rounded-xl border" placeholder="9740159704" /></div>
+          <div class="col-span-2"><label>Age Group</label>
+            <select x-model="profile.ageGroup" class="mt-1 w-full px-3 py-2 rounded-xl border">
+              <option value="">Pick one</option>
+              <template x-for="a in ages" :key="a"><option :value="a" x-text="a"></option></template>
+            </select>
+          </div>
+        </div>
+        <button @click="saveProfile()" class="mt-4 w-full px-4 py-2 rounded-2xl bg-black text-white">Let’s Read!</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mode chooser -->
+  <section x-show="profileReady && !mode" x-cloak class="max-w-6xl mx-auto px-4 py-8">
+    <div class="bg-white/70 backdrop-blur rounded-3xl p-6 border shadow-soft">
+      <h1 class="text-3xl font-extrabold">Hi <span x-text="profile.child || 'Reader'"></span> 👋</h1>
+      <p class="text-sm text-slate-700 mt-1">Choose how to explore:</p>
+      <div class="mt-4 grid gap-3 md:grid-cols-2">
+        <button @click="pickFlip()" class="px-4 py-3 rounded-2xl bg-white border hover:bg-slate-50 flex items-center justify-between"><span><b>Flip & Pick</b><br><span class="text-sm text-slate-600">One surprise at a time</span></span><span>🎲</span></button>
+        <button @click="mode='window'" class="px-4 py-3 rounded-2xl bg-white border hover:bg-slate-50 flex items-center justify-between"><span><b>Window Mode</b><br><span class="text-sm text-slate-600">Browse all books</span></span><span>🪟</span></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Flip & Pick -->
+  <section x-show="mode==='flip'" x-cloak class="max-w-6xl mx-auto px-4 py-8">
+    <div class="bg-white/70 backdrop-blur rounded-3xl p-6 border shadow-soft">
+      <div class="flex items-center justify-between">
+        <h2 class="text-2xl font-bold">Flip & Pick 🎲</h2>
+        <button class="px-3 py-2 rounded-xl border bg-white hover:bg-slate-50" @click="mode='window'">Window Mode</button>
+      </div>
+      <div class="mt-4">
+        <template x-if="flipPick">
+          <div class="rounded-2xl overflow-hidden bg-white border grid md:grid-cols-2">
+            <img :src="img(flipPick)" class="h-64 w-full object-cover">
+            <div class="p-4">
+              <h3 class="text-xl font-semibold" x-text="flipPick['Title']"></h3>
+              <p class="text-sm text-slate-600" x-text="'Age ' + (flipPick['Age group']||'-')"></p>
+              <p class="text-sm mt-2 line-clamp-4" x-text="flipPick['Description'] || 'No description yet'"></p>
+              <div class="mt-3 flex gap-2">
+                <button class="px-4 py-2 rounded-xl bg-black text-white" @click="addToCart(flipPick)">Add to Cart</button>
+                <button class="px-4 py-2 rounded-xl border" @click="addToWishlist(flipPick)">Wishlist</button>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+      <button class="mt-4 px-4 py-2 rounded-xl border bg-white hover:bg-slate-50" @click="pickFlip()">Flip again</button>
+    </div>
+  </section>
+
+  <!-- Window Mode -->
+  <section x-show="mode==='window'" x-cloak class="max-w-6xl mx-auto px-4 py-6">
+    <div class="grid md:grid-cols-4 gap-3 items-end">
+      <div class="md:col-span-2">
+        <label class="text-sm">Search</label>
+        <input type="text" placeholder="Title or author…" class="w-full px-3 py-2 rounded-xl border bg-white" x-model="q">
+      </div>
+      <div>
+        <label class="text-sm">Age</label>
+        <select class="w-full px-3 py-2 rounded-xl border bg-white" x-model="age">
+          <option value="">All Ages</option>
+          <template x-for="a in ages" :key="a"><option :value="a" x-text="a"></option></template>
+        </select>
+      </div>
+      <div>
+        <label class="text-sm">Genre</label>
+        <select class="w-full px-3 py-2 rounded-xl border bg-white" x-model="genre">
+          <option value="">All Genres</option>
+          <template x-for="g in genres" :key="g"><option :value="g" x-text="g"></option></template>
+        </select>
+      </div>
+    </div>
+
+    <p class="text-center text-xs text-slate-600 mt-2">Loaded <span x-text="books.length"></span> books</p>
+
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+      <template x-for="b in filteredBooks()" :key="b.id">
+        <div class="rounded-2xl overflow-hidden bg-white border shadow-soft flex flex-col">
+          <div class="h-40 w-full bg-slate-100">
+            <img :src="img(b)" :alt="b['Title']" class="h-full w-full object-cover" onerror="this.style.display='none'">
+          </div>
+          <div class="p-4 flex-1 flex flex-col">
+            <div class="flex items-center justify-between">
+              <h3 class="font-semibold" x-text="b['Title']"></h3>
+              <span class="text-xs px-2 py-1 rounded-full border" :class="available(b) ? 'bg-green-50 border-green-300' : 'bg-red-50 border-red-300'"
+                x-text="available(b) ? 'Available' : 'Rented'"></span>
+            </div>
+            <p class="text-xs text-slate-600 mt-0.5" x-text="'Age ' + (b['Age group']||'-') + ' • ' + (b['Type']||'')"></p>
+            <div class="mt-auto pt-3 flex items-center gap-2">
+              <button class="px-3 py-2 rounded-xl border" @click="openDetails(b)">Know more</button>
+              <button class="px-3 py-2 rounded-xl bg-black text-white" :disabled="!available(b)" @click="addToCart(b)">Add</button>
+              <button class="px-3 py-2 rounded-xl border" @click="addToWishlist(b)">Wishlist</button>
+            </div>
+          </div>
+        </div>
+      </template>
+      <template x-if="filteredBooks().length===0">
+        <div class="col-span-full text-center text-sm text-slate-600">No books match your filters.</div>
+      </template>
+    </div>
+  </section>
+
+  <!-- Details Modal -->
+  <div x-show="details" x-cloak class="fixed inset-0 z-50">
+    <div class="absolute inset-0 bg-black/30" @click="details=null"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+      <div class="w-full max-w-lg bg-white/80 backdrop-blur border rounded-3xl shadow-soft p-6">
+        <div class="flex items-center justify-between">
+          <h3 class="text-xl font-bold" x-text="details?.['Title']"></h3>
+          <button class="p-2 rounded-lg hover:bg-slate-50" @click="details=null">✖</button>
+        </div>
+        <img :src="img(details||{})" class="h-56 w-full object-cover rounded-2xl mt-3">
+        <p class="text-sm text-slate-600" x-text="'By ' + ((details&&details['Author']) || '—')"></p>
+        <p class="text-sm mt-3" x-text="(details&&details['Description']) || 'No description yet'"></p>
+        <div class="text-sm mt-3">Age <span x-text="details?.['Age group'] || '-'"></span> • <span x-text="details?.['Type'] || '-'"></span></div>
+        <div class="mt-3 flex gap-2">
+          <button class="px-4 py-2 rounded-xl bg-black text-white" @click="addToCart(details)">Add to Cart</button>
+          <button class="px-4 py-2 rounded-xl border" @click="addToWishlist(details)">Wishlist</button>
+          <button class="px-4 py-2 rounded-xl border bg-white hover:bg-slate-50" @click="details=null">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Wishlist Drawer -->
+  <div x-show="openWishlist" x-cloak class="fixed inset-0 z-50">
+    <div class="absolute inset-0 bg-black/30" @click="openWishlist=false"></div>
+    <div class="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white p-4 shadow-2xl overflow-y-auto">
+      <div class="flex items-center justify-between">
+        <h3 class="font-semibold text-lg">Your Wishlist</h3>
+        <button class="p-2 rounded-lg hover:bg-slate-50" @click="openWishlist=false">✖</button>
+      </div>
+      <div class="mt-3 space-y-2">
+        <template x-if="wishlist.length===0"><div class="text-sm text-slate-600">Empty for now. Save some books!</div></template>
+        <template x-for="it in wishlist" :key="it.id">
+          <div class="flex items-center gap-3 border rounded-xl p-2">
+            <img :src="img(it)" class="w-12 h-12 rounded object-cover">
+            <div class="flex-1">
+              <div class="text-sm font-medium" x-text="it['Title']"></div>
+              <div class="text-xs text-slate-600" x-text="'Age ' + (it['Age group']||'-')"></div>
+            </div>
+            <span class="text-xs px-2 py-1 rounded-full border" :class="available(it) ? 'bg-green-50 border-green-300' : 'bg-red-50 border-red-300'"
+              x-text="available(it) ? 'Available' : 'Rented'"></span>
+            <button class="p-2" @click="removeFromWishlist(it.id)">✖</button>
+          </div>
+        </template>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cart Drawer -->
+  <div x-show="openCart" x-cloak class="fixed inset-0 z-50">
+    <div class="absolute inset-0 bg-black/30" @click="openCart=false"></div>
+    <div class="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white p-4 shadow-2xl overflow-y-auto">
+      <div class="flex items-center justify-between">
+        <h3 class="font-semibold text-lg">Your Cart</h3>
+        <button class="p-2 rounded-lg hover:bg-slate-50" @click="openCart=false">✖</button>
+      </div>
+      <div class="mt-3 space-y-2">
+        <template x-if="cart.length===0"><div class="text-sm text-slate-600">Cart is empty. Add a book!</div></template>
+        <template x-for="it in cart" :key="it.id">
+          <div class="flex items-center gap-3 border rounded-xl p-2">
+            <img :src="img(it)" class="w-12 h-12 rounded object-cover">
+            <div class="flex-1">
+              <div class="text-sm font-medium" x-text="it['Title']"></div>
+              <div class="text-xs text-slate-600" x-text="'Age ' + (it['Age group']||'-') + ' • ' + (it['Type']||'')"></div>
+            </div>
+            <button class="px-2 py-1 rounded-lg border" @click="decrement(it.id)">-</button>
+            <span class="w-6 text-center" x-text="qty[it.id] || 1"></span>
+            <button class="px-2 py-1 rounded-lg border" @click="increment(it.id)">+</button>
+            <button class="p-2" @click="removeFromCart(it.id)">🗑️</button>
+          </div>
+        </template>
+      </div>
+      <div class="grid grid-cols-2 gap-3 mt-3 text-sm">
+        <div><label>Rental duration</label><select class="w-full px-3 py-2 rounded-xl border" x-model.number="duration"><option value="7">7 days</option><option value="14">14 days</option><option value="28">28 days</option></select></div>
+        <div><label>Pickup or delivery</label><select class="w-full px-3 py-2 rounded-xl border" x-model="delivery"><option value="pickup">Pickup (Free)</option><option value="delivery">Delivery (₹49)</option></select></div>
+      </div>
+      <div class="border rounded-2xl p-3 space-y-1 text-sm mt-3">
+        <div class="flex justify-between"><span>Subtotal</span><span>₹<span x-text="subtotal()"></span></span></div>
+        <div class="flex justify-between"><span>Delivery</span><span>₹<span x-text="deliveryFee()"></span></span></div>
+        <div class="flex justify-between font-semibold pt-2 border-t"><span>Total</span><span>₹<span x-text="total()"></span></span></div>
+      </div>
+      <button class="mt-3 w-full px-4 py-2 rounded-xl bg-black text-white disabled:opacity-40" :disabled="cart.length===0" @click="checkout()">Place Order on WhatsApp</button>
+    </div>
+  </div>
+
+  <!-- Recommend a book -->
+  <div x-show="showRecommend" x-cloak class="fixed inset-0 z-50">
+    <div class="absolute inset-0 bg-black/30" @click="showRecommend=false"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+      <div class="w-full max-w-md bg-white/80 backdrop-blur border rounded-3xl shadow-soft p-6">
+        <h3 class="text-xl font-bold">Recommend a Book</h3>
+        <p class="text-sm text-slate-600">Tell us the book you want. We'll try to add it! 💌</p>
+        <div class="mt-3 grid gap-2">
+          <input class="border rounded-xl px-3 py-2" placeholder="Book title" x-model="request.title">
+          <textarea class="border rounded-xl px-3 py-2" rows="3" placeholder="Any details (author, age, why?)" x-model="request.details"></textarea>
+        </div>
+        <div class="mt-3 flex gap-2 justify-end">
+          <button class="px-3 py-2 rounded-xl border" @click="showRecommend=false">Close</button>
+          <button class="px-3 py-2 rounded-xl bg-black text-white" @click="sendRecommend()">Send on WhatsApp</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="border-t py-8 mt-8 bg-white/60">
+    <div class="max-w-6xl mx-auto px-4 text-sm text-slate-700 flex flex-col md:flex-row items-center justify-between gap-2">
+      <div>© <span x-text="new Date().getFullYear()"></span> SimpleMom</div>
+      <div class="flex items-center gap-2">
+        <button class="px-2 py-1 rounded-lg border" @click="simulateReturns()">Simulate Returns</button>
+        <button class="px-2 py-1 rounded-lg border" @click="resetAll()">Reset App</button>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<script>
+const WA_NUMBER = "9740159704";
+const DELIVERY_FEE = 49;
+const PRICES = { "0-2": 59, "3-4": 69, "5-6": 79, "6-9": 89 };
+
+function persist(k,v){ localStorage.setItem(k, JSON.stringify(v)); }
+function load(k,f){ try{ const r=localStorage.getItem(k); return r? JSON.parse(r):f }catch(e){ return f } }
+function uid(){ return Math.random().toString(36).slice(2,9) }
+
+function app(){
+  return {
+    books:[], ages:[], genres:[],
+    q:"", age:"", genre:"",
+    wishlist: load("sm_wl", []),
+    cart: load("sm_cart", []), qty: load("sm_qty", {}),
+    duration:14, delivery:"pickup",
+    openCart:false, openWishlist:false, details:null,
+    showRecommend:false, request:{ title:"", details:"" },
+    profile:{ child:"", parent:"", whatsapp:"", ageGroup:"" }, profileReady:false, mode:null, flipPick:null,
+
+    async init(){
+      let data = [];
+      try{
+        const r = await fetch('/api/notion-books'); 
+        data = await r.json();
+      }catch(e){ data = []; }
+      this.books = (Array.isArray(data)?data:[]).map(b => ({ id:b.id || uid(), ...b }));
+      this.ages = [...new Set(this.books.map(b=>b["Age group"]).filter(Boolean))];
+      this.genres = [...new Set(this.books.map(b=>b["Type"]).filter(Boolean))];
+
+      const p = load("sm_profile", null);
+      if(p && p.child && p.parent && p.whatsapp && p.ageGroup){ this.profile=p; this.profileReady=true; }
+    },
+
+    saveProfile(){
+      if(!this.profile.child || !this.profile.parent || !this.profile.whatsapp || !this.profile.ageGroup){
+        alert("Please fill all details"); return;
+      }
+      persist("sm_profile", this.profile); this.profileReady=true;
+    },
+
+    img(b){ return b["Image"] || ""; },
+    available(b){ return (Number(b["Copies"]||1) - Number(b["Rented"]||0)) > 0; },
+
+    pickFlip(){
+      const pool = this.books.filter(b => !this.profile.ageGroup || b["Age group"]===this.profile.ageGroup);
+      if(pool.length===0){ this.mode='window'; return; }
+      this.flipPick = pool[Math.floor(Math.random()*pool.length)]; this.mode='flip';
+    },
+
+    filteredBooks(){
+      const q = this.q.trim().toLowerCase();
+      return this.books.filter(b => 
+        (!q || (b["Title"]||"").toLowerCase().includes(q) || (b["Author"]||"").toLowerCase().includes(q)) &&
+        (!this.age || b["Age group"]===this.age) &&
+        (!this.genre || b["Type"]===this.genre)
+      );
+    },
+
+    openDetails(b){ this.details=b; },
+
+    addToWishlist(b){ if(!this.wishlist.find(x=>x.id===b.id)){ this.wishlist.push(b); persist("sm_wl", this.wishlist); } },
+    removeFromWishlist(id){ this.wishlist=this.wishlist.filter(x=>x.id!==id); persist("sm_wl", this.wishlist); },
+
+    cartCount(){ return Object.values(this.qty).reduce((a,b)=>a+(b||0),0) || 0; },
+    addToCart(b){
+      const nextTotal = this.cartCount()+1;
+      if(nextTotal>10){ alert("Only 10 books can be rented at a time."); return; }
+      if(!this.cart.find(x=>x.id===b.id)){ this.cart.push(b); this.qty[b.id]=1; }
+      else { this.qty[b.id]=(this.qty[b.id]||1)+1; }
+      persist("sm_cart", this.cart); persist("sm_qty", this.qty); this.openCart=true;
+    },
+    removeFromCart(id){ delete this.qty[id]; this.cart=this.cart.filter(x=>x.id!==id); persist("sm_cart", this.cart); persist("sm_qty", this.qty); },
+    increment(id){ const nextTotal=this.cartCount()+1; if(nextTotal>10){ alert("Max 10 in cart"); return; } this.qty[id]=(this.qty[id]||1)+1; persist("sm_qty", this.qty); },
+    decrement(id){ this.qty[id]=Math.max(1,(this.qty[id]||1)-1); persist("sm_qty", this.qty); },
+
+    priceFor(age){ return PRICES[age] || 69; },
+    subtotal(){ return this.cart.reduce((s,it)=> s + (this.priceFor(it["Age group"]) * (this.qty[it.id]||1)), 0); },
+    deliveryFee(){ return this.delivery==='delivery'? 49 : 0; },
+    total(){ return this.subtotal() + this.deliveryFee(); },
+
+    checkout(){
+      const items = this.cart.map(b => `${b["Title"]} x${this.qty[b.id]||1}`).join("\n• ");
+      const msg = `Hi! I'd like to rent from SimpleMom:\n• ${items}\nDuration: ${this.duration} days\nDelivery: ${this.delivery}`;
+      window.open(`https://wa.me/9740159704?text=${encodeURIComponent(msg)}`, "_blank");
+    },
+
+    sendRecommend(){
+      if(!this.request.title){ alert("Please enter a title"); return; }
+      const msg = `Book request:\nTitle: ${this.request.title}\nDetails: ${this.request.details || '-'}`;
+      window.open(`https://wa.me/9740159704?text=${encodeURIComponent(msg)}`, "_blank");
+      this.showRecommend=false; this.request={title:'',details:''};
+    },
+
+    resetAll(){ localStorage.clear(); location.href = location.pathname; },
+    simulateReturns(){ const i=this.books.findIndex(b => Number(b["Rented"]||0) > 0); if(i>=0){ this.books[i]["Rented"] = Math.max(0, Number(this.books[i]["Rented"]||0)-1); this.books=[...this.books]; } }
+  }
+}
+</script>
+</body>
+</html>
