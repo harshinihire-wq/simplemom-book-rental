@@ -131,12 +131,27 @@
           </div>
           <div class="p-4 flex-1 flex flex-col">
             <div class="flex items-center justify-between">
-              <h3 class="font-semibold" x-text="b['Title']"></h3>
-              <span class="text-xs px-2 py-1 rounded-full border" :class="available(b) ? 'bg-green-50 border-green-300' : 'bg-red-50 border-red-300'"
-                x-text="available(b) ? 'Available' : 'Rented'"></span>
-            </div>
-            <p class="text-xs text-slate-600 mt-0.5" x-text="'Age ' + (b['Age group']||'-') + ' • ' + (b['Type']||'')"></p>
-            <div class="mt-auto pt-3 flex items-center gap-2">
+  <!-- Title from normalized API -->
+  <h3 class="font-semibold" x-text="b.title || 'Untitled'"></h3>
+
+  <span class="text-xs px-2 py-1 rounded-full border"
+        :class="available(b) ? 'bg-green-50 border-green-300' : 'bg-slate-100 border-slate-300'"
+        x-text="available(b) ? 'Available' : 'Rented'"></span>
+</div>
+
+<!-- NEW: price row -->
+<div class="mt-1 text-sm">
+  <span x-show="b.mrp" class="opacity-60 line-through">
+    ₹<span x-text="b.mrp"></span>
+  </span>
+  <span class="ml-2 font-semibold">
+    ₹<span x-text="b.rent || 0"></span> rent
+  </span>
+</div>
+
+<!-- Age + Genre from normalized API -->
+<p class="text-xs text-slate-600 mt-0.5"
+   x-text="'Age ' + (b.ageRange || '-') + ' • ' + (b.genre || '')"></p>
               <button class="px-3 py-2 rounded-xl border" @click="openDetails(b)">Know more</button>
               <button class="px-3 py-2 rounded-xl bg-black text-white" :disabled="!available(b)" @click="addToCart(b)">Add</button>
               <button class="px-3 py-2 rounded-xl border" @click="addToWishlist(b)">Wishlist</button>
