@@ -46,7 +46,8 @@
         <div class="grid grid-cols-2 gap-3 mt-4 text-sm">
           <div class="col-span-2"><label>Child’s Name</label><input x-model="profile.child" class="mt-1 w-full px-3 py-2 rounded-xl border" placeholder="Tapasvi" /></div>
           <div><label>Parent’s Name</label><input x-model="profile.parent" class="mt-1 w-full px-3 py-2 rounded-xl border" placeholder="Parent" /></div>
-          <div><label>WhatsApp</label><input x-model="profile.whatsapp" class="mt-1 w-full px-3 py-2 rounded-xl border" placeholder="9740159704" /></div>
+          <div><label>WhatsApp</label><input x-model="profile.whatsapp" type="tel" pattern="[0-9]*" inputmode="numeric" class="mt-1 w-full px-3 py-2 rounded-xl border" placeholder="9740159704" />
+</div>
           <div class="col-span-2"><label>Age Group</label>
             <select x-model="profile.ageGroup" class="mt-1 w-full px-3 py-2 rounded-xl border">
               <option value="">Pick one</option>
