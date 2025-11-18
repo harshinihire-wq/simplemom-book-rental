@@ -49,13 +49,13 @@
           <div><label>WhatsApp</label><input x-model="profile.whatsapp" type="tel" pattern="[0-9]*" inputmode="numeric" class="mt-1 w-full px-3 py-2 rounded-xl border" placeholder="9740159704" />
 </div>
           <div class="col-span-2"><label>Age Group</label>
-            <select x-model="profile.age" class="mt-1 w-full px-3 py-2 rounded-xl border">
-    <option value="">Pick one</option>
-    <template x-for="a in ages" :key="a">
-        <option :value="a" x-text="a"></option>
-    </template>
-</select>
-
+            <!-- FIXED: bind to profile.ageGroup (app expects ageGroup) -->
+            <select x-model="profile.ageGroup" class="mt-1 w-full px-3 py-2 rounded-xl border">
+              <option value="">Pick one</option>
+              <template x-for="(a, idx) in ages" :key="idx">
+                <option :value="a" x-text="a"></option>
+              </template>
+            </select>
           </div>
         </div>
         <button @click="saveProfile()" class="mt-4 w-full px-4 py-2 rounded-2xl bg-black text-white">Let’s Read!</button>
@@ -307,7 +307,7 @@ function app(){
     async init(){
       let data = [];
       try{
-        const r = await fetch('/api/notion-books'); 
+        const r = await fetch('/api/notion-books');
         data = await r.json();
       }catch(e){ data = []; }
       this.books = (Array.isArray(data)?data:[]).map(b => ({ id:b.id || uid(), ...b }));
@@ -336,7 +336,7 @@ function app(){
 
     filteredBooks(){
       const q = this.q.trim().toLowerCase();
-      return this.books.filter(b => 
+      return this.books.filter(b =>
         (!q || (b["Title"]||"").toLowerCase().includes(q) || (b["Author"]||"").toLowerCase().includes(q)) &&
         (!this.age || b["Age group"]===this.age) &&
         (!this.genre || b["Type"]===this.genre)
